@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aramco Net Salary Calculator</title>
+  <style>
+    :root {
+      --primary: #0284c7;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --text-muted: #64748b;
+    }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      max-width: 520px;
+      margin: 30px auto;
+      padding: 0 16px;
+    }
+    .app-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    h2 { margin-top: 0; font-size: 22px; color: #0f172a; }
+
+    /* Disabled Upload Zone */
+    .upload-zone-disabled {
+      border: 2px dashed #cbd5e1;
+      background: #f1f5f9;
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+      margin-bottom: 22px;
+      cursor: not-allowed;
+      opacity: 0.85;
+      position: relative;
+    }
+    .coming-soon-badge {
+      display: inline-block;
+      background: #e2e8f0;
+      color: #475569;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 3px 8px;
+      border-radius: 9999px;
+      margin-bottom: 6px;
+    }
+    .upload-zone-disabled p {
+      margin: 4px 0 0 0;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* Form Fields */
+    .input-group { margin-bottom: 16px; }
+    label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+    .hint { font-size: 12px; font-weight: normal; color: var(--text-muted); }
+    input[type="number"] {
+      width: 100%;
+      padding: 10px 12px;
+      box-sizing: border-box;
+      font-size: 15px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+    }
+    .radio-group { display: flex; gap: 16px; margin-top: 6px; }
+    .radio-label { font-weight: normal; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 14px; }
+    
+    /* Result Box */
+    .breakdown-card {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 22px;
+    }
+    .breakdown-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; }
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      border-top: 1px solid #cbd5e1;
+      padding-top: 10px;
+      margin-top: 8px;
+      font-size: 18px;
+      font-weight: bold;
+      color: var(--primary);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-card">
+    <h2>Aramco Net Salary Calculator</h2>
+
+    <!-- Coming Soon Upload Zone -->
+    <div class="upload-zone-disabled">
+      <span class="coming-soon-badge">Feature Coming Soon</span>
+      <div><strong>📄 Upload Salary Certificate</strong></div>
+      <p>Automatic salary details extraction will be available soon.</p>
+    </div>
+
+    <!-- 1. Basic Salary -->
+    <div class="input-group">
+      <label for="basic">Basic Salary (Monthly SAR)</label>
+      <input type="number" id="basic" value="45240" oninput="onBasicChange()" />
+    </div>
+
+    <!-- 2. Housing Option -->
+    <div class="input-group">
+      <label>Housing Allowance</label>
+      <div class="radio-group">
+        <label class="radio-label">
+          <input type="radio" name="housingType" id="housingPercent" value="percent" checked onchange="toggleHousingInput()" />
+          25% of Basic
+        </label>
+        <label class="radio-label">
+          <input type="radio" name="housingType" id="housingCustom" value="custom" onchange="toggleHousingInput()" />
+          Yearly Amount (÷ 12)
+        </label>
+      </div>
+    </div>
+
+    <!-- Custom Housing Input -->
+    <div class="input-group" id="customHousingContainer" style="display: none;">
+      <label for="housing">Housing Allowance (Yearly SAR)</label>
+      <input type="number" id="housing" value="0" oninput="calculateNet()" />
+    </div>
+
+    <!-- 3. Ramadan Salary -->
+    <div class="input-group">
+      <label for="ramadan">
+        Ramadan Salary (Yearly SAR) 
+        <span class="hint">(Defaults to 1 Basic Salary)</span>
+      </label>
+      <input type="number" id="ramadan" value="45240" oninput="onRamadanManualEdit()" />
+    </div>
+
+    <!-- 4. Optional Bonus -->
+    <div class="input-group">
+      <label for="bonus">
+        Bonus Salary (Annual SAR) 
+        <span class="hint">(Optional)</span>
+      </label>
+      <input type="number" id="bonus" placeholder="0" value="0" oninput="calculateNet()" />
+    </div>
+
+    <!-- Breakdown Card -->
+    <div class="breakdown-card">
+      <div class="breakdown-row"><span>GOSI Deduction (9.75%):</span><span id="gosiOut">- SAR 0.00</span></div>
+      <div class="breakdown-row"><span>Net Basic Salary:</span><span id="netBasicOut">SAR 0.00</span></div>
+      <div class="breakdown-row"><span id="housingLabel">Monthly Housing (25%):</span><span id="housingOut">+ SAR 0.00</span></div>
+      <div class="breakdown-row"><span>Monthly Ramadan Salary:</span><span id="ramadanOut">+ SAR 0.00</span></div>
+      <div class="breakdown-row"><span>Monthly Bonus:</span><span id="bonusOut">+ SAR 0.00</span></div>
+      <div class="total-row"><span>Net Monthly Salary:</span><span id="netOut">SAR 0.00</span></div>
+    </div>
+  </div>
+
+  <script>
+    let isRamadanManuallyEdited = false;
+
+    function onBasicChange() {
+      const basicVal = document.getElementById('basic').value;
+      if (!isRamadanManuallyEdited) {
+        document.getElementById('ramadan').value = basicVal;
+      }
+      calculateNet();
+    }
+
+    function onRamadanManualEdit() {
+      isRamadanManuallyEdited = true;
+      calculateNet();
+    }
+
+    function toggleHousingInput() {
+      const isCustom = document.querySelector('input[name="housingType"]:checked').value === 'custom';
+      document.getElementById('customHousingContainer').style.display = isCustom ? 'block' : 'none';
+      calculateNet();
+    }
+
+    function calculateNet() {
+      const basic = parseFloat(document.getElementById('basic').value) || 0;
+      const ramadan = parseFloat(document.getElementById('ramadan').value) || 0;
+      const bonus = parseFloat(document.getElementById('bonus').value) || 0;
+      const isPercent = document.querySelector('input[name="housingType"]:checked').value === 'percent';
+
+      let monthlyHousing = 0;
+      if (isPercent) {
+        monthlyHousing = basic * 0.25;
+        document.getElementById('housingLabel').innerText = 'Monthly Housing (25% of Basic):';
+      } else {
+        const annualHousing = parseFloat(document.getElementById('housing').value) || 0;
+        monthlyHousing = annualHousing / 12;
+        document.getElementById('housingLabel').innerText = 'Monthly Housing (Yearly ÷ 12):';
+      }
+
+      const gosi = basic * 0.0975;
+      const netBasic = basic - gosi;
+      const monthlyRamadan = ramadan / 12;
+      const monthlyBonus = bonus / 12;
+      const netSalary = netBasic + monthlyHousing + monthlyRamadan + monthlyBonus;
+
+      document.getElementById('gosiOut').innerText = `- SAR ${gosi.toFixed(2)}`;
+      document.getElementById('netBasicOut').innerText = `SAR ${netBasic.toFixed(2)}`;
+      document.getElementById('housingOut').innerText = `+ SAR ${monthlyHousing.toFixed(2)}`;
+      document.getElementById('ramadanOut').innerText = `+ SAR ${monthlyRamadan.toFixed(2)}`;
+      document.getElementById('bonusOut').innerText = `+ SAR ${monthlyBonus.toFixed(2)}`;
+      document.getElementById('netOut').innerText = `SAR ${netSalary.toFixed(2)}`;
+    }
+
+    calculateNet();
+  </script>
+</body>
+</html>
