@@ -12,6 +12,7 @@
       --border: #e2e8f0;
       --text: #1e293b;
       --text-muted: #64748b;
+      --warning: #f59e0b;
     }
     body {
       font-family: system-ui, -apple-system, sans-serif;
@@ -35,12 +36,11 @@
       border: 2px dashed #cbd5e1;
       background: #f1f5f9;
       border-radius: 8px;
-      padding: 16px;
+      padding: 14px;
       text-align: center;
-      margin-bottom: 22px;
+      margin-bottom: 20px;
       cursor: not-allowed;
       opacity: 0.85;
-      position: relative;
     }
     .coming-soon-badge {
       display: inline-block;
@@ -50,18 +50,14 @@
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      padding: 3px 8px;
+      padding: 2px 8px;
       border-radius: 9999px;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
     }
-    .upload-zone-disabled p {
-      margin: 4px 0 0 0;
-      font-size: 13px;
-      color: var(--text-muted);
-    }
+    .upload-zone-disabled p { margin: 2px 0 0 0; font-size: 12px; color: var(--text-muted); }
 
     /* Form Fields */
-    .input-group { margin-bottom: 16px; }
+    .input-group { margin-bottom: 14px; }
     label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; }
     .hint { font-size: 12px; font-weight: normal; color: var(--text-muted); }
     input[type="number"] {
@@ -72,7 +68,7 @@
       border: 1px solid #cbd5e1;
       border-radius: 6px;
     }
-    .radio-group { display: flex; gap: 16px; margin-top: 6px; }
+    .radio-group { display: flex; gap: 16px; margin-top: 4px; }
     .radio-label { font-weight: normal; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 14px; }
     
     /* Result Box */
@@ -81,15 +77,28 @@
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 16px;
-      margin-top: 22px;
+      margin-top: 20px;
     }
     .breakdown-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; }
+    .status-badge {
+      background: #e0f2fe;
+      color: #0369a1;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      margin-top: 10px;
+      line-height: 1.4;
+    }
+    .status-badge.override {
+      background: #fef3c7;
+      color: #92400e;
+    }
     .total-row {
       display: flex;
       justify-content: space-between;
       border-top: 1px solid #cbd5e1;
       padding-top: 10px;
-      margin-top: 8px;
+      margin-top: 10px;
       font-size: 18px;
       font-weight: bold;
       color: var(--primary);
@@ -153,6 +162,15 @@
       <input type="number" id="bonus" placeholder="0" value="0" oninput="calculateNet()" />
     </div>
 
+    <!-- 5. Credited Salary -->
+    <div class="input-group">
+      <label for="credited">
+        Credited Salary / Bank Deposit (Monthly SAR)
+        <span class="hint">(Optional verification)</span>
+      </label>
+      <input type="number" id="credited" placeholder="Enter deposited salary in bank" oninput="calculateNet()" />
+    </div>
+
     <!-- Breakdown Card -->
     <div class="breakdown-card">
       <div class="breakdown-row"><span>GOSI Deduction (9.75%):</span><span id="gosiOut">- SAR 0.00</span></div>
@@ -160,7 +178,13 @@
       <div class="breakdown-row"><span id="housingLabel">Monthly Housing (25%):</span><span id="housingOut">+ SAR 0.00</span></div>
       <div class="breakdown-row"><span>Monthly Ramadan Salary:</span><span id="ramadanOut">+ SAR 0.00</span></div>
       <div class="breakdown-row"><span>Monthly Bonus:</span><span id="bonusOut">+ SAR 0.00</span></div>
-      <div class="total-row"><span>Net Monthly Salary:</span><span id="netOut">SAR 0.00</span></div>
+      <div class="breakdown-row" style="color: #475569; font-weight: 500;">
+        <span>Calculated Net:</span><span id="rawNetOut">SAR 0.00</span>
+      </div>
+
+      <div id="statusBox" class="status-badge" style="display: none;"></div>
+
+      <div class="total-row"><span>Final Net Salary:</span><span id="netOut">SAR 0.00</span></div>
     </div>
   </div>
 
@@ -190,6 +214,7 @@
       const basic = parseFloat(document.getElementById('basic').value) || 0;
       const ramadan = parseFloat(document.getElementById('ramadan').value) || 0;
       const bonus = parseFloat(document.getElementById('bonus').value) || 0;
+      const credited = parseFloat(document.getElementById('credited').value);
       const isPercent = document.querySelector('input[name="housingType"]:checked').value === 'percent';
 
       let monthlyHousing = 0;
@@ -206,14 +231,38 @@
       const netBasic = basic - gosi;
       const monthlyRamadan = ramadan / 12;
       const monthlyBonus = bonus / 12;
-      const netSalary = netBasic + monthlyHousing + monthlyRamadan + monthlyBonus;
+      const calculatedNet = netBasic + monthlyHousing + monthlyRamadan + monthlyBonus;
+
+      // Credited Salary Logic Check
+      let finalNet = calculatedNet;
+      const statusBox = document.getElementById('statusBox');
+
+      if (!isNaN(credited) && credited > 0) {
+        statusBox.style.display = 'block';
+        const lowerLimit20Percent = calculatedNet * 0.80;
+
+        if (credited >= lowerLimit20Percent) {
+          // Credited is within 20% below, or equal/higher -> Take Calculated Net
+          finalNet = calculatedNet;
+          statusBox.className = 'status-badge';
+          statusBox.innerText = `Credited amount (SAR ${credited.toLocaleString()}) is within 20% or higher. Using Calculated Net Salary.`;
+        } else {
+          // Credited is lower than 20% -> Take Credited Salary
+          finalNet = credited;
+          statusBox.className = 'status-badge override';
+          statusBox.innerText = `Credited amount (SAR ${credited.toLocaleString()}) is more than 20% lower than calculated net. Using Credited Salary.`;
+        }
+      } else {
+        statusBox.style.display = 'none';
+      }
 
       document.getElementById('gosiOut').innerText = `- SAR ${gosi.toFixed(2)}`;
       document.getElementById('netBasicOut').innerText = `SAR ${netBasic.toFixed(2)}`;
       document.getElementById('housingOut').innerText = `+ SAR ${monthlyHousing.toFixed(2)}`;
       document.getElementById('ramadanOut').innerText = `+ SAR ${monthlyRamadan.toFixed(2)}`;
       document.getElementById('bonusOut').innerText = `+ SAR ${monthlyBonus.toFixed(2)}`;
-      document.getElementById('netOut').innerText = `SAR ${netSalary.toFixed(2)}`;
+      document.getElementById('rawNetOut').innerText = `SAR ${calculatedNet.toFixed(2)}`;
+      document.getElementById('netOut').innerText = `SAR ${finalNet.toFixed(2)}`;
     }
 
     calculateNet();
