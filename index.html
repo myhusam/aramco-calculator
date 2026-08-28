@@ -3,22 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Aramco Net Salary Calculator</title>
+  <title>Aramco Net Salary & Loan Eligibility Calculator</title>
   <style>
     :root {
       --primary: #0284c7;
+      --primary-dark: #0369a1;
       --bg: #f8fafc;
       --card-bg: #ffffff;
       --border: #e2e8f0;
       --text: #1e293b;
       --text-muted: #64748b;
-      --warning: #f59e0b;
+      --success: #16a34a;
     }
     body {
       font-family: system-ui, -apple-system, sans-serif;
       background-color: var(--bg);
       color: var(--text);
-      max-width: 520px;
+      max-width: 540px;
       margin: 30px auto;
       padding: 0 16px;
     }
@@ -28,10 +29,21 @@
       border-radius: 12px;
       padding: 24px;
       box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      margin-bottom: 20px;
     }
     h2 { margin-top: 0; font-size: 22px; color: #0f172a; }
+    h3 { margin-top: 0; font-size: 18px; color: #0f172a; display: flex; align-items: center; justify-content: space-between; }
+    
+    .sama-badge {
+      background: #dcfce7;
+      color: var(--success);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 9999px;
+      text-transform: uppercase;
+    }
 
-    /* Disabled Upload Zone */
     .upload-zone-disabled {
       border: 2px dashed #cbd5e1;
       background: #f1f5f9;
@@ -56,11 +68,10 @@
     }
     .upload-zone-disabled p { margin: 2px 0 0 0; font-size: 12px; color: var(--text-muted); }
 
-    /* Form Fields */
     .input-group { margin-bottom: 14px; }
     label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; }
     .hint { font-size: 12px; font-weight: normal; color: var(--text-muted); }
-    input[type="number"] {
+    input[type="number"], select {
       width: 100%;
       padding: 10px 12px;
       box-sizing: border-box;
@@ -71,13 +82,12 @@
     .radio-group { display: flex; gap: 16px; margin-top: 4px; }
     .radio-label { font-weight: normal; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 14px; }
     
-    /* Result Box */
     .breakdown-card {
       background: #f8fafc;
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 16px;
-      margin-top: 20px;
+      margin-top: 18px;
     }
     .breakdown-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; }
     .status-badge {
@@ -89,10 +99,7 @@
       margin-top: 10px;
       line-height: 1.4;
     }
-    .status-badge.override {
-      background: #fef3c7;
-      color: #92400e;
-    }
+    .status-badge.override { background: #fef3c7; color: #92400e; }
     .total-row {
       display: flex;
       justify-content: space-between;
@@ -102,6 +109,19 @@
       font-size: 18px;
       font-weight: bold;
       color: var(--primary);
+    }
+
+    .loan-result-box {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 16px;
+    }
+    .loan-total {
+      font-size: 20px;
+      font-weight: bold;
+      color: #15803d;
     }
   </style>
 </head>
@@ -141,7 +161,7 @@
     <!-- Custom Housing Input -->
     <div class="input-group" id="customHousingContainer" style="display: none;">
       <label for="housing">Housing Allowance (Yearly SAR)</label>
-      <input type="number" id="housing" value="0" oninput="calculateNet()" />
+      <input type="number" id="housing" value="0" oninput="calculateAll()" />
     </div>
 
     <!-- 3. Ramadan Salary -->
@@ -159,7 +179,7 @@
         Bonus Salary (Annual SAR) 
         <span class="hint">(Optional)</span>
       </label>
-      <input type="number" id="bonus" placeholder="0" value="0" oninput="calculateNet()" />
+      <input type="number" id="bonus" placeholder="0" value="0" oninput="calculateAll()" />
     </div>
 
     <!-- 5. Credited Salary -->
@@ -168,7 +188,7 @@
         Credited Salary / Bank Deposit (Monthly SAR)
         <span class="hint">(Optional verification)</span>
       </label>
-      <input type="number" id="credited" placeholder="Enter deposited salary in bank" oninput="calculateNet()" />
+      <input type="number" id="credited" placeholder="Enter deposited salary in bank" oninput="calculateAll()" />
     </div>
 
     <!-- Breakdown Card -->
@@ -188,6 +208,59 @@
     </div>
   </div>
 
+  <!-- SAMA Max Personal Financing Section -->
+  <div class="app-card">
+    <h3>
+      <span>SAMA Personal Finance Limits</span>
+      <span class="sama-badge">33.33% DBR Cap</span>
+    </h3>
+
+    <div class="input-group">
+      <label for="tenure">Financing Tenure</label>
+      <select id="tenure" onchange="calculateAll()">
+        <option value="5" selected>5 Years (60 Months - SAMA Max)</option>
+        <option value="4">4 Years (48 Months)</option>
+        <option value="3">3 Years (36 Months)</option>
+        <option value="2">2 Years (24 Months)</option>
+        <option value="1">1 Year (12 Months)</option>
+      </select>
+    </div>
+
+    <div class="input-group">
+      <label for="rate">
+        Estimated Annual Profit Rate (Flat APR %)
+      </label>
+      <input type="number" id="rate" value="3.5" step="0.1" oninput="calculateAll()" />
+    </div>
+
+    <div class="input-group">
+      <label for="obligations">
+        Existing Monthly Loan / Card Deductions (SAR)
+        <span class="hint">(If any)</span>
+      </label>
+      <input type="number" id="obligations" value="0" placeholder="0" oninput="calculateAll()" />
+    </div>
+
+    <div class="loan-result-box">
+      <div class="breakdown-row">
+        <span>Max Monthly Installment (33.33% DBR):</span>
+        <strong id="maxDeductionOut">SAR 0.00</strong>
+      </div>
+      <div class="breakdown-row">
+        <span>Available Monthly Limit:</span>
+        <span id="availInstallmentOut">SAR 0.00</span>
+      </div>
+      <div class="breakdown-row">
+        <span>Total Repayment Over Term:</span>
+        <span id="totalRepaymentOut">SAR 0.00</span>
+      </div>
+      <div class="total-row" style="border-top-color: #bbf7d0;">
+        <span class="loan-total">Max Loan Principal:</span>
+        <span class="loan-total" id="maxPrincipalOut">SAR 0.00</span>
+      </div>
+    </div>
+  </div>
+
   <script>
     let isRamadanManuallyEdited = false;
 
@@ -196,21 +269,21 @@
       if (!isRamadanManuallyEdited) {
         document.getElementById('ramadan').value = basicVal;
       }
-      calculateNet();
+      calculateAll();
     }
 
     function onRamadanManualEdit() {
       isRamadanManuallyEdited = true;
-      calculateNet();
+      calculateAll();
     }
 
     function toggleHousingInput() {
       const isCustom = document.querySelector('input[name="housingType"]:checked').value === 'custom';
       document.getElementById('customHousingContainer').style.display = isCustom ? 'block' : 'none';
-      calculateNet();
+      calculateAll();
     }
 
-    function calculateNet() {
+    function calculateAll() {
       const basic = parseFloat(document.getElementById('basic').value) || 0;
       const ramadan = parseFloat(document.getElementById('ramadan').value) || 0;
       const bonus = parseFloat(document.getElementById('bonus').value) || 0;
@@ -242,12 +315,10 @@
         const lowerLimit20Percent = calculatedNet * 0.80;
 
         if (credited >= lowerLimit20Percent) {
-          // Credited is within 20% below, or equal/higher -> Take Calculated Net
           finalNet = calculatedNet;
           statusBox.className = 'status-badge';
           statusBox.innerText = `Credited amount (SAR ${credited.toLocaleString()}) is within 20% or higher. Using Calculated Net Salary.`;
         } else {
-          // Credited is lower than 20% -> Take Credited Salary
           finalNet = credited;
           statusBox.className = 'status-badge override';
           statusBox.innerText = `Credited amount (SAR ${credited.toLocaleString()}) is more than 20% lower than calculated net. Using Credited Salary.`;
@@ -256,6 +327,7 @@
         statusBox.style.display = 'none';
       }
 
+      // Update Salary UI
       document.getElementById('gosiOut').innerText = `- SAR ${gosi.toFixed(2)}`;
       document.getElementById('netBasicOut').innerText = `SAR ${netBasic.toFixed(2)}`;
       document.getElementById('housingOut').innerText = `+ SAR ${monthlyHousing.toFixed(2)}`;
@@ -263,9 +335,27 @@
       document.getElementById('bonusOut').innerText = `+ SAR ${monthlyBonus.toFixed(2)}`;
       document.getElementById('rawNetOut').innerText = `SAR ${calculatedNet.toFixed(2)}`;
       document.getElementById('netOut').innerText = `SAR ${finalNet.toFixed(2)}`;
+
+      // SAMA Loan Eligibility Calculations (33.33% DBR Cap)
+      const tenureYears = parseInt(document.getElementById('tenure').value, 10) || 5;
+      const profitRate = parseFloat(document.getElementById('rate').value) || 0;
+      const existingObligations = parseFloat(document.getElementById('obligations').value) || 0;
+
+      const totalMonths = tenureYears * 12;
+      const maxMonthlyAllowed = finalNet * 0.3333;
+      const availableMonthly = Math.max(0, maxMonthlyAllowed - existingObligations);
+      const totalRepayment = availableMonthly * totalMonths;
+      
+      // Principal = Total Repayment / (1 + (FlatRate% * Years))
+      const principal = totalRepayment / (1 + ((profitRate / 100) * tenureYears));
+
+      document.getElementById('maxDeductionOut').innerText = `SAR ${maxMonthlyAllowed.toFixed(2)}`;
+      document.getElementById('availInstallmentOut').innerText = `SAR ${availableMonthly.toFixed(2)}`;
+      document.getElementById('totalRepaymentOut').innerText = `SAR ${totalRepayment.toFixed(2)}`;
+      document.getElementById('maxPrincipalOut').innerText = `SAR ${principal.toFixed(2)}`;
     }
 
-    calculateNet();
+    calculateAll();
   </script>
 </body>
 </html>
