@@ -79,8 +79,20 @@
       border: 1px solid #cbd5e1;
       border-radius: 6px;
     }
-    .radio-group { display: flex; gap: 16px; margin-top: 4px; }
-    .radio-label { font-weight: normal; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 14px; }
+    .radio-group-vertical {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .radio-label {
+      font-weight: normal;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
     
     .breakdown-card {
       background: #f8fafc;
@@ -100,6 +112,15 @@
       line-height: 1.4;
     }
     .status-badge.override { background: #fef3c7; color: #92400e; }
+    .tier-badge {
+      display: inline-block;
+      font-size: 11px;
+      background: #eff6ff;
+      color: var(--primary);
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-top: 4px;
+    }
     .total-row {
       display: flex;
       justify-content: space-between;
@@ -143,25 +164,29 @@
       <input type="number" id="basic" value="45240" oninput="onBasicChange()" />
     </div>
 
-    <!-- 2. Housing Option -->
+    <!-- 2. Housing Options -->
     <div class="input-group">
       <label>Housing Allowance</label>
-      <div class="radio-group">
+      <div class="radio-group-vertical">
         <label class="radio-label">
           <input type="radio" name="housingType" id="housingPercent" value="percent" checked onchange="toggleHousingInput()" />
           25% of Basic
         </label>
         <label class="radio-label">
+          <input type="radio" name="housingType" id="housingYearlyBasic" value="yearlyBasic" onchange="toggleHousingInput()" />
+          Yearly (Basic Salary ÷ 12)
+        </label>
+        <label class="radio-label">
           <input type="radio" name="housingType" id="housingCustom" value="custom" onchange="toggleHousingInput()" />
-          Yearly Amount (÷ 12)
+          Other Amount (Specific Yearly ÷ 12)
         </label>
       </div>
     </div>
 
-    <!-- Custom Housing Input -->
+    <!-- Other Amount Input -->
     <div class="input-group" id="customHousingContainer" style="display: none;">
-      <label for="housing">Housing Allowance (Yearly SAR)</label>
-      <input type="number" id="housing" value="0" oninput="calculateAll()" />
+      <label for="housing">Specific Housing Amount (Yearly SAR)</label>
+      <input type="number" id="housing" value="30000" placeholder="Enter annual housing amount" oninput="calculateAll()" />
     </div>
 
     <!-- 3. Ramadan Salary -->
@@ -195,7 +220,7 @@
     <div class="breakdown-card">
       <div class="breakdown-row"><span>GOSI Deduction (9.75%):</span><span id="gosiOut">- SAR 0.00</span></div>
       <div class="breakdown-row"><span>Net Basic Salary:</span><span id="netBasicOut">SAR 0.00</span></div>
-      <div class="breakdown-row"><span id="housingLabel">Monthly Housing (25%):</span><span id="housingOut">+ SAR 0.00</span></div>
+      <div class="breakdown-row"><span id="housingLabel">Monthly Housing:</span><span id="housingOut">+ SAR 0.00</span></div>
       <div class="breakdown-row"><span>Monthly Ramadan Salary:</span><span id="ramadanOut">+ SAR 0.00</span></div>
       <div class="breakdown-row"><span>Monthly Bonus:</span><span id="bonusOut">+ SAR 0.00</span></div>
       <div class="breakdown-row" style="color: #475569; font-weight: 500;">
@@ -228,9 +253,11 @@
 
     <div class="input-group">
       <label for="rate">
-        Estimated Annual Profit Rate (Flat APR %)
+        Annual Profit Rate (Flat APR %)
+        <span class="hint">(Auto-set by Net Salary tier)</span>
       </label>
-      <input type="number" id="rate" value="3.5" step="0.1" oninput="calculateAll()" />
+      <input type="number" id="rate" value="1.79" step="0.01" oninput="onRateManualEdit()" />
+      <div id="rateTierBadge" class="tier-badge">Tier applied: 1.79% (SAR 40k - 69k bracket)</div>
     </div>
 
     <div class="input-group">
@@ -263,6 +290,7 @@
 
   <script>
     let isRamadanManuallyEdited = false;
+    let isRateManuallyEdited = false;
 
     function onBasicChange() {
       const basicVal = document.getElementById('basic').value;
@@ -277,10 +305,26 @@
       calculateAll();
     }
 
-    function toggleHousingInput() {
-      const isCustom = document.querySelector('input[name="housingType"]:checked').value === 'custom';
-      document.getElementById('customHousingContainer').style.display = isCustom ? 'block' : 'none';
+    function onRateManualEdit() {
+      isRateManuallyEdited = true;
+      document.getElementById('rateTierBadge').innerText = 'Custom Rate manually entered';
       calculateAll();
+    }
+
+    function toggleHousingInput() {
+      const selectedHousing = document.querySelector('input[name="housingType"]:checked').value;
+      document.getElementById('customHousingContainer').style.display = (selectedHousing === 'custom') ? 'block' : 'none';
+      calculateAll();
+    }
+
+    function getTieredRate(net) {
+      if (net >= 70000) return { rate: 1.49, desc: 'Tier applied: 1.49% (SAR 70k+ bracket)' };
+      if (net >= 40000) return { rate: 1.79, desc: 'Tier applied: 1.79% (SAR 40k - 69,999 bracket)' };
+      if (net >= 25000) return { rate: 1.99, desc: 'Tier applied: 1.99% (SAR 25k - 39,999 bracket)' };
+      if (net >= 15000) return { rate: 2.39, desc: 'Tier applied: 2.39% (SAR 15k - 24,999 bracket)' };
+      if (net >= 10000) return { rate: 2.69, desc: 'Tier applied: 2.69% (SAR 10k - 14,999 bracket)' };
+      if (net >= 5000)  return { rate: 3.49, desc: 'Tier applied: 3.49% (SAR 5k - 9,999 bracket)' };
+      return { rate: 3.99, desc: 'Standard Rate: 3.99% (< SAR 5,000)' };
     }
 
     function calculateAll() {
@@ -288,25 +332,30 @@
       const ramadan = parseFloat(document.getElementById('ramadan').value) || 0;
       const bonus = parseFloat(document.getElementById('bonus').value) || 0;
       const credited = parseFloat(document.getElementById('credited').value);
-      const isPercent = document.querySelector('input[name="housingType"]:checked').value === 'percent';
+      const housingType = document.querySelector('input[name="housingType"]:checked').value;
 
+      // Housing allowance calculation
       let monthlyHousing = 0;
-      if (isPercent) {
+      if (housingType === 'percent') {
         monthlyHousing = basic * 0.25;
         document.getElementById('housingLabel').innerText = 'Monthly Housing (25% of Basic):';
-      } else {
+      } else if (housingType === 'yearlyBasic') {
+        monthlyHousing = basic / 12;
+        document.getElementById('housingLabel').innerText = 'Monthly Housing (Basic ÷ 12):';
+      } else if (housingType === 'custom') {
         const annualHousing = parseFloat(document.getElementById('housing').value) || 0;
         monthlyHousing = annualHousing / 12;
-        document.getElementById('housingLabel').innerText = 'Monthly Housing (Yearly ÷ 12):';
+        document.getElementById('housingLabel').innerText = 'Monthly Housing (Other Amount ÷ 12):';
       }
 
+      // Salary math
       const gosi = basic * 0.0975;
       const netBasic = basic - gosi;
       const monthlyRamadan = ramadan / 12;
       const monthlyBonus = bonus / 12;
       const calculatedNet = netBasic + monthlyHousing + monthlyRamadan + monthlyBonus;
 
-      // Credited Salary Logic Check
+      // Credited Salary 20% Variance Check
       let finalNet = calculatedNet;
       const statusBox = document.getElementById('statusBox');
 
@@ -327,7 +376,7 @@
         statusBox.style.display = 'none';
       }
 
-      // Update Salary UI
+      // Update Salary Section
       document.getElementById('gosiOut').innerText = `- SAR ${gosi.toFixed(2)}`;
       document.getElementById('netBasicOut').innerText = `SAR ${netBasic.toFixed(2)}`;
       document.getElementById('housingOut').innerText = `+ SAR ${monthlyHousing.toFixed(2)}`;
@@ -335,6 +384,13 @@
       document.getElementById('bonusOut').innerText = `+ SAR ${monthlyBonus.toFixed(2)}`;
       document.getElementById('rawNetOut').innerText = `SAR ${calculatedNet.toFixed(2)}`;
       document.getElementById('netOut').innerText = `SAR ${finalNet.toFixed(2)}`;
+
+      // Apply Salary Tiered Profit Rate
+      if (!isRateManuallyEdited) {
+        const tier = getTieredRate(finalNet);
+        document.getElementById('rate').value = tier.rate;
+        document.getElementById('rateTierBadge').innerText = tier.desc;
+      }
 
       // SAMA Loan Eligibility Calculations (33.33% DBR Cap)
       const tenureYears = parseInt(document.getElementById('tenure').value, 10) || 5;
@@ -346,7 +402,6 @@
       const availableMonthly = Math.max(0, maxMonthlyAllowed - existingObligations);
       const totalRepayment = availableMonthly * totalMonths;
       
-      // Principal = Total Repayment / (1 + (FlatRate% * Years))
       const principal = totalRepayment / (1 + ((profitRate / 100) * tenureYears));
 
       document.getElementById('maxDeductionOut').innerText = `SAR ${maxMonthlyAllowed.toFixed(2)}`;
