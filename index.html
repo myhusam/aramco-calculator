@@ -1,3 +1,5 @@
+The initial default for Basic Salary is now set to 0 (with Ramadan Salary and all dependent outputs starting at 0 as well).
+Updated HTML & JavaScript Code
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -158,10 +160,10 @@
       <p>Automatic salary details extraction will be available soon.</p>
     </div>
 
-    <!-- 1. Basic Salary -->
+    <!-- 1. Basic Salary (Defaulted to 0) -->
     <div class="input-group">
       <label for="basic">Basic Salary (Monthly SAR)</label>
-      <input type="number" id="basic" value="45240" oninput="onBasicChange()" />
+      <input type="number" id="basic" value="0" placeholder="0" oninput="onBasicChange()" />
     </div>
 
     <!-- 2. Housing Options -->
@@ -186,16 +188,16 @@
     <!-- Other Amount Input -->
     <div class="input-group" id="customHousingContainer" style="display: none;">
       <label for="housing">Specific Housing Amount (Yearly SAR)</label>
-      <input type="number" id="housing" value="30000" placeholder="Enter annual housing amount" oninput="calculateAll()" />
+      <input type="number" id="housing" value="0" placeholder="Enter annual housing amount" oninput="calculateAll()" />
     </div>
 
-    <!-- 3. Ramadan Salary -->
+    <!-- 3. Ramadan Salary (Defaulted to 0) -->
     <div class="input-group">
       <label for="ramadan">
         Ramadan Salary (Yearly SAR) 
         <span class="hint">(Defaults to 1 Basic Salary)</span>
       </label>
-      <input type="number" id="ramadan" value="45240" oninput="onRamadanManualEdit()" />
+      <input type="number" id="ramadan" value="0" placeholder="0" oninput="onRamadanManualEdit()" />
     </div>
 
     <!-- 4. Optional Bonus -->
@@ -220,7 +222,7 @@
     <div class="breakdown-card">
       <div class="breakdown-row"><span>GOSI Deduction (9.75%):</span><span id="gosiOut">- SAR 0.00</span></div>
       <div class="breakdown-row"><span>Net Basic Salary:</span><span id="netBasicOut">SAR 0.00</span></div>
-      <div class="breakdown-row"><span id="housingLabel">Monthly Housing:</span><span id="housingOut">+ SAR 0.00</span></div>
+      <div class="breakdown-row"><span id="housingLabel">Monthly Housing (25%):</span><span id="housingOut">+ SAR 0.00</span></div>
       <div class="breakdown-row"><span>Monthly Ramadan Salary:</span><span id="ramadanOut">+ SAR 0.00</span></div>
       <div class="breakdown-row"><span>Monthly Bonus:</span><span id="bonusOut">+ SAR 0.00</span></div>
       <div class="breakdown-row" style="color: #475569; font-weight: 500;">
@@ -256,8 +258,8 @@
         Annual Profit Rate (Flat APR %)
         <span class="hint">(Auto-set by Net Salary tier)</span>
       </label>
-      <input type="number" id="rate" value="1.79" step="0.01" oninput="onRateManualEdit()" />
-      <div id="rateTierBadge" class="tier-badge">Tier applied: 1.79% (SAR 40k - 69k bracket)</div>
+      <input type="number" id="rate" value="3.99" step="0.01" oninput="onRateManualEdit()" />
+      <div id="rateTierBadge" class="tier-badge">Standard Rate: 3.99% (&lt; SAR 5,000)</div>
     </div>
 
     <div class="input-group">
@@ -414,3 +416,4 @@
   </script>
 </body>
 </html>
+
