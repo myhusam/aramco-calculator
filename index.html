@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -15,6 +14,7 @@
       --text: #1e293b;
       --text-muted: #64748b;
       --success: #16a34a;
+      --error: #dc2626;
     }
     body {
       font-family: system-ui, -apple-system, sans-serif;
@@ -145,6 +145,12 @@
       font-weight: bold;
       color: #15803d;
     }
+    .warning-text {
+      color: var(--error);
+      font-size: 12px;
+      margin-top: 4px;
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -159,7 +165,7 @@
       <p>Automatic salary details extraction will be available soon.</p>
     </div>
 
-    <!-- 1. Basic Salary (Defaulted to 0) -->
+    <!-- 1. Basic Salary -->
     <div class="input-group">
       <label for="basic">Basic Salary (Monthly SAR)</label>
       <input type="number" id="basic" value="0" placeholder="0" oninput="onBasicChange()" />
@@ -190,7 +196,7 @@
       <input type="number" id="housing" value="0" placeholder="Enter annual housing amount" oninput="calculateAll()" />
     </div>
 
-    <!-- 3. Ramadan Salary (Defaulted to 0) -->
+    <!-- 3. Ramadan Salary -->
     <div class="input-group">
       <label for="ramadan">
         Ramadan Salary (Yearly SAR) 
@@ -269,13 +275,27 @@
       <input type="number" id="obligations" value="0" placeholder="0" oninput="calculateAll()" />
     </div>
 
+    <!-- Desired / Specific Financing Amount -->
+    <div class="input-group">
+      <label for="desiredLoan">
+        Desired Financing Amount (SAR)
+        <span class="hint">(Optional - leave 0 to calculate maximum possible)</span>
+      </label>
+      <input type="number" id="desiredLoan" value="0" placeholder="0" oninput="calculateAll()" />
+      <div id="loanWarning" class="warning-text">Requested amount exceeds maximum eligible financing!</div>
+    </div>
+
     <div class="loan-result-box">
       <div class="breakdown-row">
-        <span>Max Monthly Installment (33.33% DBR):</span>
+        <span>Max Monthly Cap (33.33% DBR):</span>
         <strong id="maxDeductionOut">SAR 0.00</strong>
       </div>
       <div class="breakdown-row">
-        <span>Available Monthly Limit:</span>
+        <span>Eligible Max Loan Principal:</span>
+        <span id="maxEligibleOut">SAR 0.00</span>
+      </div>
+      <div class="breakdown-row">
+        <span id="installmentLabel">Monthly Installment:</span>
         <span id="availInstallmentOut">SAR 0.00</span>
       </div>
       <div class="breakdown-row">
@@ -283,7 +303,7 @@
         <span id="totalRepaymentOut">SAR 0.00</span>
       </div>
       <div class="total-row" style="border-top-color: #bbf7d0;">
-        <span class="loan-total">Max Loan Principal:</span>
+        <span class="loan-total" id="principalLabel">Financing Principal:</span>
         <span class="loan-total" id="maxPrincipalOut">SAR 0.00</span>
       </div>
     </div>
@@ -335,7 +355,6 @@
       const credited = parseFloat(document.getElementById('credited').value);
       const housingType = document.querySelector('input[name="housingType"]:checked').value;
 
-      // Housing allowance calculation
       let monthlyHousing = 0;
       if (housingType === 'percent') {
         monthlyHousing = basic * 0.25;
@@ -349,14 +368,12 @@
         document.getElementById('housingLabel').innerText = 'Monthly Housing (Other Amount ÷ 12):';
       }
 
-      // Salary math
       const gosi = basic * 0.0975;
       const netBasic = basic - gosi;
       const monthlyRamadan = ramadan / 12;
       const monthlyBonus = bonus / 12;
       const calculatedNet = netBasic + monthlyHousing + monthlyRamadan + monthlyBonus;
 
-      // Credited Salary 20% Variance Check
       let finalNet = calculatedNet;
       const statusBox = document.getElementById('statusBox');
 
@@ -377,7 +394,6 @@
         statusBox.style.display = 'none';
       }
 
-      // Update Salary Section
       document.getElementById('gosiOut').innerText = `- SAR ${gosi.toFixed(2)}`;
       document.getElementById('netBasicOut').innerText = `SAR ${netBasic.toFixed(2)}`;
       document.getElementById('housingOut').innerText = `+ SAR ${monthlyHousing.toFixed(2)}`;
@@ -386,33 +402,57 @@
       document.getElementById('rawNetOut').innerText = `SAR ${calculatedNet.toFixed(2)}`;
       document.getElementById('netOut').innerText = `SAR ${finalNet.toFixed(2)}`;
 
-      // Apply Salary Tiered Profit Rate
       if (!isRateManuallyEdited) {
         const tier = getTieredRate(finalNet);
         document.getElementById('rate').value = tier.rate;
         document.getElementById('rateTierBadge').innerText = tier.desc;
       }
 
-      // SAMA Loan Eligibility Calculations (33.33% DBR Cap)
+      // SAMA Loan Calculations
       const tenureYears = parseInt(document.getElementById('tenure').value, 10) || 5;
       const profitRate = parseFloat(document.getElementById('rate').value) || 0;
       const existingObligations = parseFloat(document.getElementById('obligations').value) || 0;
+      const desiredLoan = parseFloat(document.getElementById('desiredLoan').value) || 0;
 
       const totalMonths = tenureYears * 12;
       const maxMonthlyAllowed = finalNet * 0.3333;
-      const availableMonthly = Math.max(0, maxMonthlyAllowed - existingObligations);
-      const totalRepayment = availableMonthly * totalMonths;
-      
-      const principal = totalRepayment / (1 + ((profitRate / 100) * tenureYears));
+      const availableMonthlyCapacity = Math.max(0, maxMonthlyAllowed - existingObligations);
+      const maxTotalRepayment = availableMonthlyCapacity * totalMonths;
+      const maxAllowedPrincipal = maxTotalRepayment / (1 + ((profitRate / 100) * tenureYears));
+
+      let displayPrincipal = maxAllowedPrincipal;
+      let displayRepayment = maxTotalRepayment;
+      let displayInstallment = availableMonthlyCapacity;
+
+      const warningEl = document.getElementById('loanWarning');
+
+      if (desiredLoan > 0) {
+        if (desiredLoan > maxAllowedPrincipal) {
+          warningEl.style.display = 'block';
+        } else {
+          warningEl.style.display = 'none';
+        }
+
+        displayPrincipal = desiredLoan;
+        displayRepayment = desiredLoan * (1 + ((profitRate / 100) * tenureYears));
+        displayInstallment = displayRepayment / totalMonths;
+
+        document.getElementById('principalLabel').innerText = 'Requested Principal:';
+        document.getElementById('installmentLabel').innerText = 'Required Installment:';
+      } else {
+        warningEl.style.display = 'none';
+        document.getElementById('principalLabel').innerText = 'Max Loan Principal:';
+        document.getElementById('installmentLabel').innerText = 'Max Monthly Installment:';
+      }
 
       document.getElementById('maxDeductionOut').innerText = `SAR ${maxMonthlyAllowed.toFixed(2)}`;
-      document.getElementById('availInstallmentOut').innerText = `SAR ${availableMonthly.toFixed(2)}`;
-      document.getElementById('totalRepaymentOut').innerText = `SAR ${totalRepayment.toFixed(2)}`;
-      document.getElementById('maxPrincipalOut').innerText = `SAR ${principal.toFixed(2)}`;
+      document.getElementById('maxEligibleOut').innerText = `SAR ${maxAllowedPrincipal.toFixed(2)}`;
+      document.getElementById('availInstallmentOut').innerText = `SAR ${displayInstallment.toFixed(2)}`;
+      document.getElementById('totalRepaymentOut').innerText = `SAR ${displayRepayment.toFixed(2)}`;
+      document.getElementById('maxPrincipalOut').innerText = `SAR ${displayPrincipal.toFixed(2)}`;
     }
 
     calculateAll();
   </script>
 </body>
 </html>
-
